@@ -6,5 +6,5 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 
 interface IFutureAssetOracle {
   function getAssetAddress() external view returns (address);
-  function setAssetAddress() external;
+  function setAssetAddress(address) external;
 }
