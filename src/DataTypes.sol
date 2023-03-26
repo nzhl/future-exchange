@@ -12,12 +12,14 @@ enum OfferState {
   USED
 }
 
+// keccak256("Offer(uint8 offerType, address offerer, uint16 collateralRatio, uint48 createTime, uint48 overdueTime, address pricingAsset, uint256 pricingAssetAmount, uint256 expectingFutureAssetAmount, uint256 counter)")
+bytes32 constant OFFER_TYPE_HASH = 0xe094571c770141efb143124837534c02daf275588377a58148a69d0869273b89;
 struct Offer {
   OfferType offerType;
   address offerer;
 
   uint16 collateralRatio;
-  uint48 effectingTime;
+  uint48 createTime;
   uint48 overdueTime;
 
   address pricingAsset;
@@ -26,7 +28,8 @@ struct Offer {
   uint256 expectingFutureAssetAmount;
 
   uint256 counter;
-  bytes32 signature;
+
+  bytes signature;
 }
 
 
