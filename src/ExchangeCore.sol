@@ -9,6 +9,9 @@ import {NotOfferOwner, CounterNotMatch, OfferNoLongerValid, AT_LEAST_ONE_HOUR_BE
 
 contract ExchangeCore is Ownable {
     event AgreementCreated(uint256);
+    event OfferCancelled(bytes32);
+    event AllOfferCancelled(address);
+
 
     uint256 internal idCounter = 0;
     mapping(uint256 => Agreement) public agreementsMap;
@@ -94,10 +97,13 @@ contract ExchangeCore is Ownable {
         _verifyOffer(offer, offerHash);
 
         offerStateMap[offerHash] = OfferState.CANCELLED;
+        emit OfferCancelled(offerHash);
     }
 
     function cancelAllOffers() external {
         userOfferCounter[_msgSender()] += 1;
+
+        emit AllOfferCancelled(_msgSender());
     }
 
     // https://eips.ethereum.org/EIPS/eip-712#specification
