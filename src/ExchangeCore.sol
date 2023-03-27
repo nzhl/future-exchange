@@ -5,7 +5,14 @@ import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {SignatureChecker} from "openzeppelin-contracts/contracts/utils/cryptography/SignatureChecker.sol";
 import {Vault} from "./Vault.sol";
 import {Agreement, Offer, AgreementState, OfferType, OfferState, OFFER_TYPE_HASH} from "./DataTypes.sol";
-import {NotOfferOwner, CounterNotMatch, OfferNoLongerValid, AtLeastOneHourBeforeOverdue, AgreementAlreadyClosed, NotFromVault} from "./Errors.sol";
+import {
+    NotOfferOwner,
+    CounterNotMatch,
+    OfferNoLongerValid,
+    AtLeastOneHourBeforeOverdue,
+    AgreementAlreadyClosed,
+    NotFromVault
+} from "./Errors.sol";
 
 contract ExchangeCore is Ownable {
     event AgreementCreated(uint256);
@@ -59,7 +66,7 @@ contract ExchangeCore is Ownable {
                 pricingAsset: offer.pricingAsset,
                 pricingAssetAmount: offer.pricingAssetAmount,
                 pricingAssetOfferer: offer.offerer,
-                futureAsset: address(0),
+                futureAssetOracle: offer.futureAssetOracle,
                 futureAssetAmount: offer.expectingFutureAssetAmount,
                 futureAssetOfferer: _msgSender(),
                 vault: address(vault)
@@ -73,7 +80,7 @@ contract ExchangeCore is Ownable {
                 pricingAsset: offer.pricingAsset,
                 pricingAssetAmount: offer.pricingAssetAmount,
                 pricingAssetOfferer: _msgSender(),
-                futureAsset: address(0),
+                futureAssetOracle: offer.futureAssetOracle,
                 futureAssetAmount: offer.expectingFutureAssetAmount,
                 futureAssetOfferer: offer.offerer,
                 vault: address(vault)
@@ -154,10 +161,7 @@ contract ExchangeCore is Ownable {
     }
 
     // ------ internal ------------
-    function _verifyOffer(
-        Offer calldata offer,
-        bytes32 hash
-    ) internal view returns (bool) {
+    function _verifyOffer(Offer calldata offer, bytes32 hash) internal view returns (bool) {
         if (offer.counter != userOfferCounter[offer.offerer]) {
             revert CounterNotMatch();
         }
@@ -166,11 +170,7 @@ contract ExchangeCore is Ownable {
             revert OfferNoLongerValid();
         }
 
-        SignatureChecker.isValidSignatureNow(
-            offer.offerer,
-            hash,
-            offer.signature
-        );
+        SignatureChecker.isValidSignatureNow(offer.offerer, hash, offer.signature);
         return true;
     }
 }
