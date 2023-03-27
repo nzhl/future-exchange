@@ -5,13 +5,12 @@ import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
 import {SignatureChecker} from "openzeppelin-contracts/contracts/utils/cryptography/SignatureChecker.sol";
 import {Vault} from "./Vault.sol";
 import {Agreement, Offer, AgreementState, OfferType, OfferState, OFFER_TYPE_HASH} from "./DataTypes.sol";
-import {NotOfferOwner, CounterNotMatch, OfferNoLongerValid, AT_LEAST_ONE_HOUR_BEFORE_OVERDUE} from "./Errors.sol";
+import {NotOfferOwner, CounterNotMatch, OfferNoLongerValid, AtLeastOneHourBeforeOverdue, AgreementAlreadyClosed, NotFromVault} from "./Errors.sol";
 
 contract ExchangeCore is Ownable {
     event AgreementCreated(uint256);
     event OfferCancelled(bytes32);
     event AllOfferCancelled(address);
-
 
     uint256 internal idCounter = 0;
     mapping(uint256 => Agreement) public agreementsMap;
@@ -19,6 +18,7 @@ contract ExchangeCore is Ownable {
     mapping(address => uint256) public userOfferCounter;
 
     bytes32 internal DOMAIN_SEPARATOR;
+
     constructor() {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
@@ -41,7 +41,7 @@ contract ExchangeCore is Ownable {
         _verifyOffer(offer, offerHash);
 
         if (offer.overdueTime - block.timestamp < 1 hours) {
-            revert AT_LEAST_ONE_HOUR_BEFORE_OVERDUE();
+            revert AtLeastOneHourBeforeOverdue();
         }
 
         // 2. init vault contract
@@ -81,7 +81,7 @@ contract ExchangeCore is Ownable {
         }
 
         // 3. collateral
-        vault.transferCollateral();
+        vault.completeCollateral();
 
         offerStateMap[offerHash] = OfferState.USED;
 
@@ -106,26 +106,51 @@ contract ExchangeCore is Ownable {
         emit AllOfferCancelled(_msgSender());
     }
 
+    function closeAgreement(uint256 agreementId) external {
+        // two cases to close agreement
+        //   1. both parties paid
+        //   2. overdue
+        Agreement memory agreement = agreementsMap[agreementId];
+
+        if (_msgSender() != agreement.vault) {
+            revert NotFromVault();
+        }
+
+        if (agreement.state == AgreementState.CLOSED) {
+            revert AgreementAlreadyClosed();
+        }
+
+        // 1. close vault
+        // TODO
+
+        // 2. close agreement
+        agreementsMap[agreementId].state = AgreementState.CLOSED;
+    }
+
     // https://eips.ethereum.org/EIPS/eip-712#specification
     // bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, hash));
     function getOfferHash(Offer calldata offer) public view returns (bytes32) {
-      bytes32 hash = keccak256(
-          abi.encode(
-              OFFER_TYPE_HASH,
-              offer.offerType,
-              offer.offerer,
-              offer.collateralRatio,
-              offer.createTime,
-              offer.overdueTime,
-              offer.pricingAsset,
-              offer.pricingAssetAmount,
-              offer.expectingFutureAssetAmount,
-              offer.counter
-          )
+        bytes32 hash = keccak256(
+            abi.encode(
+                OFFER_TYPE_HASH,
+                offer.offerType,
+                offer.offerer,
+                offer.collateralRatio,
+                offer.createTime,
+                offer.overdueTime,
+                offer.pricingAsset,
+                offer.pricingAssetAmount,
+                offer.expectingFutureAssetAmount,
+                offer.counter
+            )
         );
 
         // typed data hash
         return keccak256(abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, hash));
+    }
+
+    function getAgreement(uint256 id) external view returns (Agreement memory) {
+        return agreementsMap[id];
     }
 
     // ------ internal ------------

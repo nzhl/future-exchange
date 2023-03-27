@@ -2,16 +2,16 @@
 pragma solidity ^0.8.10;
 
 import {Ownable} from "openzeppelin-contracts/contracts/access/Ownable.sol";
-import {IFutureAssetOracle} from "./interface/IFutureAssetOracle.sol";
+import {IFutureAssetOracle, AssetInfo} from "./interface/IFutureAssetOracle.sol";
 
 contract FutureAssetOracle is Ownable, IFutureAssetOracle {
-  address internal assetAddr;
+    AssetInfo internal assetInfo;
 
-  function getAssetAddress() external view returns (address) {
-    return assetAddr;
-  }
+    function getAssetInfo() external view returns (AssetInfo memory) {
+        return assetInfo;
+    }
 
-  function setAssetAddress(address _assetAddr) external onlyOwner {
-    assetAddr = _assetAddr;
-  }
+    function setAssetInfo(AssetInfo calldata _assetInfo) external onlyOwner {
+        assetInfo = _assetInfo;
+    }
 }
