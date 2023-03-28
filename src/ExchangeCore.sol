@@ -19,14 +19,17 @@ contract ExchangeCore is Ownable {
     event OfferCancelled(bytes32);
     event AllOfferCancelled(address);
 
+    Vault internal vault;
     uint256 internal idCounter = 0;
+
     mapping(uint256 => Agreement) public agreementsMap;
     mapping(bytes32 => OfferState) public offerStateMap;
     mapping(address => uint256) public userOfferCounter;
 
-    bytes32 internal DOMAIN_SEPARATOR;
+    bytes32 public DOMAIN_SEPARATOR;
 
     constructor() {
+        vault = new Vault(this);
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 // typehash
@@ -54,7 +57,6 @@ contract ExchangeCore is Ownable {
         // 2. init vault contract
         uint256 agreementId = idCounter;
         idCounter++;
-        Vault vault = new Vault(this, agreementId);
 
         // 3. agreement init
         if (offer.offerType == OfferType.PROVIDING_PRICING_ASSET) {
@@ -88,7 +90,7 @@ contract ExchangeCore is Ownable {
         }
 
         // 3. collateral
-        vault.completeCollateral();
+        vault.completeCollateral(agreementId);
 
         offerStateMap[offerHash] = OfferState.USED;
 
@@ -134,6 +136,16 @@ contract ExchangeCore is Ownable {
         agreementsMap[agreementId].state = AgreementState.CLOSED;
     }
 
+    function setVault(address newVault) external onlyOwner {
+        vault = Vault(newVault);
+    }
+
+    // ------ view ------------
+
+    function getVault() external view returns (address) {
+        return address(vault);
+    }
+
     // https://eips.ethereum.org/EIPS/eip-712#specification
     // bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, hash));
     function getOfferHash(Offer calldata offer) public view returns (bytes32) {
@@ -148,6 +160,7 @@ contract ExchangeCore is Ownable {
                 offer.pricingAsset,
                 offer.pricingAssetAmount,
                 offer.expectingFutureAssetAmount,
+                offer.futureAssetOracle,
                 offer.counter
             )
         );

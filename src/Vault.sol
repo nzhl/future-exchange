@@ -16,14 +16,12 @@ contract Vault is Pausable {
     using SafeERC20 for IERC20;
 
     ExchangeCore exchange;
-    uint256 agreementId;
 
-    constructor(ExchangeCore _exchange, uint256 _agreementId) {
+    constructor(ExchangeCore _exchange) {
         exchange = _exchange;
-        agreementId = _agreementId;
     }
 
-    function completeCollateral() external {
+    function completeCollateral(uint256 agreementId) external {
         Agreement memory agreement = exchange.getAgreement(agreementId);
         uint256 collateralAmount = (agreement.pricingAssetAmount * agreement.collateralRatio) / 10000;
 
@@ -31,7 +29,7 @@ contract Vault is Pausable {
         IERC20(agreement.pricingAsset).safeTransferFrom(agreement.futureAssetOfferer, address(this), collateralAmount);
     }
 
-    function submitFutureAsset() external {
+    function submitFutureAsset(uint256 agreementId) external {
         Agreement memory agreement = exchange.getAgreement(agreementId);
         IFutureAssetOracle futureAssetOracle = IFutureAssetOracle(agreement.futureAssetOracle);
         AssetInfo memory futureAssetInfo = futureAssetOracle.getAssetInfo();
@@ -39,21 +37,29 @@ contract Vault is Pausable {
             revert FutureAssetNotSet();
         }
 
+        // TODO safety check
+        IERC20(agreement.pricingAsset).safeTransfer(
+            agreement.futureAssetOfferer, (agreement.pricingAssetAmount * agreement.collateralRatio) / 10000
+        );
+
         if (_checkAndPayPricingAsset(agreement)) {
             IERC20(futureAssetInfo.assetAddress).safeTransferFrom(
-                _msgSender(), agreement.pricingAssetOfferer, agreement.futureAssetAmount * futureAssetInfo.decimals
+                _msgSender(),
+                agreement.pricingAssetOfferer,
+                agreement.futureAssetAmount * 10 ** futureAssetInfo.decimals
             );
+
             emit OffererPaid(agreementId, OfferType.PROVIDING_FUTURE_ASSET);
             exchange.closeAgreement(agreementId);
         } else {
             IERC20(futureAssetInfo.assetAddress).safeTransferFrom(
-                _msgSender(), address(this), agreement.futureAssetAmount * futureAssetInfo.decimals
+                _msgSender(), address(this), agreement.futureAssetAmount * 10 ** futureAssetInfo.decimals
             );
             emit OffererPaid(agreementId, OfferType.PROVIDING_FUTURE_ASSET);
         }
     }
 
-    function submitPricingAsset() external {
+    function submitPricingAsset(uint256 agreementId) external {
         Agreement memory agreement = exchange.getAgreement(agreementId);
         IERC20 pricingAsset = IERC20(agreement.pricingAsset);
 
@@ -88,7 +94,7 @@ contract Vault is Pausable {
         }
 
         pricingAsset.safeTransfer(agreement.futureAssetOfferer, agreement.pricingAssetAmount);
-        emit OffererPaid(agreementId, OfferType.PROVIDING_PRICING_ASSET);
+        emit OffererPaid(agreement.id, OfferType.PROVIDING_PRICING_ASSET);
         return true;
     }
 
@@ -100,15 +106,15 @@ contract Vault is Pausable {
         }
         if (
             IERC20(futureAssetInfo.assetAddress).balanceOf(address(this))
-                < agreement.futureAssetAmount * futureAssetInfo.decimals
+                < agreement.futureAssetAmount * 10 ** futureAssetInfo.decimals
         ) {
             return false;
         }
 
         IERC20(futureAssetInfo.assetAddress).safeTransfer(
-            agreement.pricingAssetOfferer, agreement.futureAssetAmount * futureAssetInfo.decimals
+            agreement.pricingAssetOfferer, agreement.futureAssetAmount * 10 ** futureAssetInfo.decimals
         );
-        emit OffererPaid(agreementId, OfferType.PROVIDING_FUTURE_ASSET);
+        emit OffererPaid(agreement.id, OfferType.PROVIDING_FUTURE_ASSET);
         return true;
     }
 }
