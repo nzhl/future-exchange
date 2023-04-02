@@ -8,12 +8,13 @@ enum OfferType {
 
 enum OfferState {
     VALID,
-    CANCELLED,
+    CANCELED,
     USED
 }
 
-// cast k "Offer(uint8 offerType,address offerer,uint48 startTime,uint48 endTime,uint48 createTime,uint48 overdueTime,address pricingAsset,uint256 pricingAssetAmount,futureAssetOracle,uint256 futureAssetAmount,address collateralAsset;uint256 collateralAssetAmount;uint256 counter)"
-bytes32 constant OFFER_TYPE_HASH = 0x7465391c58c122c3dac6835ef744c4cd004f9c15a4f55e0a05338dc2fe3ac38d;
+string constant OFFER_TYPE_STRING =
+    "Offer(uint8 offerType,address offerer,uint48 startTime,uint48 endTime,uint48 createTime,uint48 overdueTime,address pricingAsset,uint256 pricingAssetAmount,address futureAssetOracle,uint256 futureAssetAmount,address collateralAsset,uint256 collateralAssetAmount,uint256 counter)";
+bytes32 constant OFFER_TYPE_HASH = 0x2a647d6f493905cc02d581604b7e032719faa0bccffd7c95e2c5e47d8d5c2dea;
 
 struct Offer {
     OfferType offerType;

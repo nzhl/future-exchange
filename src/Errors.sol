@@ -6,6 +6,7 @@ error CounterNotMatch();
 error OfferNotStart();
 error OfferExpired();
 error OfferNoLongerValid();
+error InvalidSignature();
 error AtLeastOneHourBeforeOverdue();
 error FutureAssetNotSet();
 error AgreementAlreadyClosed();

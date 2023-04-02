@@ -6,22 +6,10 @@ import {ReentrancyGuard} from "openzeppelin-contracts/contracts/security/Reentra
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SignatureChecker} from "openzeppelin-contracts/contracts/utils/cryptography/SignatureChecker.sol";
-import {Agreement, Offer, AgreementState, OfferType, OfferState, OFFER_TYPE_HASH} from "./DataTypes.sol";
+import "./DataTypes.sol";
 import {IFutureAssetOracle, AssetInfo} from "./interface/IFutureAssetOracle.sol";
 
-import {
-    NotOfferOwner,
-    CounterNotMatch,
-    OfferNotStart,
-    OfferExpired,
-    OfferNoLongerValid,
-    AtLeastOneHourBeforeOverdue,
-    AgreementAlreadyClosed,
-    FutureAssetNotSet,
-    AgreementOverdue,
-    NotAgreementParty,
-    AgreementNotOverdue
-} from "./Errors.sol";
+import "./Errors.sol";
 
 contract Swap is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -33,7 +21,7 @@ contract Swap is Ownable, ReentrancyGuard {
 
     uint256 internal idCounter = 0;
 
-    mapping(bytes32 => OfferState) public offerStateMap;
+    mapping(bytes32 => OfferState) private offerStateMap;
     mapping(address => uint256) public userOfferCounter;
     mapping(uint256 => Agreement) public agreementsMap;
     mapping(uint256 => mapping(OfferType => bool)) public offererFulfillmentMap;
@@ -103,8 +91,8 @@ contract Swap is Ownable, ReentrancyGuard {
         bytes32 offerHash = getOfferHash(offer);
         _verifyOffer(offer, offerHash);
 
-        offerStateMap[offerHash] = OfferState.CANCELLED;
-        emit OfferStateChanged(offerHash, OfferState.CANCELLED);
+        offerStateMap[offerHash] = OfferState.CANCELED;
+        emit OfferStateChanged(offerHash, OfferState.CANCELED);
     }
 
     function cancelAllOffers() external {
@@ -304,6 +292,11 @@ contract Swap is Ownable, ReentrancyGuard {
         return agreementsMap[id];
     }
 
+    function checkOfferValidity(Offer calldata offer) public view returns (bool) {
+        bytes32 hash = getOfferHash(offer);
+        return _verifyOffer(offer, hash);
+    }
+
     // ------ internal ------------
     function _verifyOffer(Offer calldata offer, bytes32 hash) internal view returns (bool) {
         if (offer.startTime > block.timestamp) {
@@ -325,7 +318,9 @@ contract Swap is Ownable, ReentrancyGuard {
             revert OfferNoLongerValid();
         }
 
-        SignatureChecker.isValidSignatureNow(offer.offerer, hash, offer.signature);
+        if (!SignatureChecker.isValidSignatureNow(offer.offerer, hash, offer.signature)) {
+            revert InvalidSignature();
+        }
         return true;
     }
 
