@@ -5,23 +5,20 @@ import "forge-std/Test.sol";
 import "forge-std/console2.sol";
 
 import {ERC20PresetMinterPauser} from "openzeppelin-contracts/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
-import {ExchangeCore} from "../src/ExchangeCore.sol";
+import {Swap} from "../src/Swap.sol";
 import {OfferType, Offer} from "../src/DataTypes.sol";
 import {FutureAssetOracle, AssetInfo} from "../src/FutureAssetOracle.sol";
 import {IFutureAssetOracle} from "../src/interface/IFutureAssetOracle.sol";
-import {Vault} from "../src/Vault.sol";
 
 contract ExchangeCoreTest is Test {
-    ExchangeCore public exchangeCore;
-    Vault public vault;
+    Swap public swap;
     IFutureAssetOracle public oracle;
 
     ERC20PresetMinterPauser public usdc;
     ERC20PresetMinterPauser public airdropToken;
 
     function setUp() public {
-        exchangeCore = new ExchangeCore();
-        vault = Vault(exchangeCore.getVault());
+        swap = new Swap();
         oracle = new FutureAssetOracle();
 
         usdc = new ERC20PresetMinterPauser("USDC", "USDC");
@@ -38,7 +35,7 @@ contract ExchangeCoreTest is Test {
         inputs1[4] = "0x3064b798329861315aab0632a1fd5bef7de21f7d5737f1c472a7255026ff3a19";
         inputs1[5] = "0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6";
         inputs1[6] = vm.toString(block.chainid);
-        inputs1[7] = vm.toString(address(exchangeCore));
+        inputs1[7] = vm.toString(address(swap));
         bytes memory result1 = vm.ffi(inputs1);
 
         // cast k
@@ -48,7 +45,7 @@ contract ExchangeCoreTest is Test {
         inputs2[2] = vm.toString(result1);
         bytes memory result2 = vm.ffi(inputs2);
 
-        assertEq(exchangeCore.DOMAIN_SEPARATOR(), bytes32(result2), "domain separator should be equal");
+        assertEq(swap.DOMAIN_SEPARATOR(), bytes32(result2), "domain separator should be equal");
     }
 
     function testGetOfferHash() public {
@@ -81,10 +78,10 @@ contract ExchangeCoreTest is Test {
         string[] memory inputs3 = new string[](3);
         inputs3[0] = "cast";
         inputs3[1] = "k";
-        inputs3[2] = vm.toString(abi.encodePacked("\x19\x01", exchangeCore.DOMAIN_SEPARATOR(), bytes32(result2)));
+        inputs3[2] = vm.toString(abi.encodePacked("\x19\x01", swap.DOMAIN_SEPARATOR(), bytes32(result2)));
         bytes memory result3 = vm.ffi(inputs3);
 
-        bytes32 offerHash = exchangeCore.getOfferHash(
+        bytes32 offerHash = swap.getOfferHash(
             Offer(
                 OfferType.PROVIDING_PRICING_ASSET,
                 address(0x1),
@@ -111,7 +108,7 @@ contract ExchangeCoreTest is Test {
         usdc.mint(buyer, 5000 ether);
 
         vm.prank(buyer);
-        usdc.approve(address(vault), type(uint256).max);
+        usdc.approve(address(swap), type(uint256).max);
         Offer memory offer = Offer({
             offerType: OfferType.PROVIDING_PRICING_ASSET,
             offerer: buyer,
@@ -129,7 +126,7 @@ contract ExchangeCoreTest is Test {
             signature: bytes("")
         });
 
-        bytes32 hash = exchangeCore.getOfferHash(offer);
+        bytes32 hash = swap.getOfferHash(offer);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(buyerSk, hash);
         offer.signature = abi.encodePacked(v, r, s);
 
@@ -139,14 +136,14 @@ contract ExchangeCoreTest is Test {
         usdc.mint(seller, 5000 ether);
 
         vm.startPrank(seller);
-        usdc.approve(address(vault), type(uint256).max);
+        usdc.approve(address(swap), type(uint256).max);
         vm.recordLogs();
-        exchangeCore.initAgreementByFulfillingOffer(offer);
-        Vm.Log[] memory logs = vm.getRecordedLogs();
+        swap.initSwapAgreement(offer);
+        Vm.LoinitSwapAgreementedLogs();
         vm.stopPrank();
 
         // 3. 30% of 1000usdc should be locked in vault
-        assertEq(usdc.balanceOf(address(vault)), 600 ether, "vault should have 300usdc");
+        assertEq(usdc.balanceOf(address(swap)), 600 ether, "vault should have 300usdc");
         assertEq(usdc.balanceOf(buyer), 4700 ether, "buyer should have 4000usdc");
         assertEq(usdc.balanceOf(seller), 4700 ether, "buyer should have 4000usdc");
 

@@ -2,11 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
-
-struct AssetInfo {
-    address assetAddress;
-    uint8 decimals;
-}
+import {AssetInfo} from "../DataTypes.sol";
 
 interface IFutureAssetOracle {
     function getAssetInfo() external view returns (AssetInfo memory);

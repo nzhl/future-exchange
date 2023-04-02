@@ -12,20 +12,27 @@ enum OfferState {
     USED
 }
 
-// keccak256("Offer(uint8 offerType, address offerer, uint16 collateralRatio, uint48 createTime, uint48 overdueTime, address pricingAsset, uint256 pricingAssetAmount, uint256 expectingFutureAssetAmount, uint256 counter)")
-bytes32 constant OFFER_TYPE_HASH = 0xe094571c770141efb143124837534c02daf275588377a58148a69d0869273b89;
+// cast k "Offer(uint8 offerType,address offerer,uint48 startTime,uint48 endTime,uint48 createTime,uint48 overdueTime,address pricingAsset,uint256 pricingAssetAmount,futureAssetOracle,uint256 futureAssetAmount,address collateralAsset;uint256 collateralAssetAmount;uint256 counter)"
+bytes32 constant OFFER_TYPE_HASH = 0x7465391c58c122c3dac6835ef744c4cd004f9c15a4f55e0a05338dc2fe3ac38d;
+
 struct Offer {
     OfferType offerType;
     address offerer;
-    uint16 collateralRatio;
+    // only the time between start and end
+    // is valid for others to fulfill the offer
+    uint48 startTime;
+    uint48 endTime;
+    // make similar offers unique.
     uint48 createTime;
+    // Once overdue, the penalty will be applied
     uint48 overdueTime;
     address pricingAsset;
-    // in wei
     uint256 pricingAssetAmount;
-    // in human sense decimals
-    uint256 expectingFutureAssetAmount;
     address futureAssetOracle;
+    // in human sense decimals here since we don't know the decimals of future asset for now
+    uint256 futureAssetAmount;
+    address collateralAsset;
+    uint256 collateralAssetAmount;
     uint256 counter;
     bytes signature;
 }
@@ -38,14 +45,21 @@ enum AgreementState {
 struct Agreement {
     uint256 id;
     AgreementState state;
-    // max 10000 i.e. 100%
-    uint16 collateralRatio;
     uint48 overdueTime;
+    //
     address pricingAsset;
     uint256 pricingAssetAmount;
     address pricingAssetOfferer;
+    //
     address futureAssetOracle;
     uint256 futureAssetAmount;
     address futureAssetOfferer;
-    address vault;
+    //
+    address collateralAsset;
+    uint256 collateralAssetAmount;
+}
+
+struct AssetInfo {
+    address assetAddress;
+    uint8 decimals;
 }
